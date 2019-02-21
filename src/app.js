@@ -1,3 +1,5 @@
+'use strict';
+
 require('dotenv').config();
 const express = require('express');
 const morgan = require('morgan');
@@ -5,6 +7,7 @@ const POKEDEX = require('./pokedex.json')
 const cors = require('cors');
 const helmet = require('helmet');
 const { NODE_ENV } = require('./config');
+require('dotenv').config();
 const app = express();
 
 const morganOption = (NODE_ENV === 'production')
@@ -14,6 +17,13 @@ const morganOption = (NODE_ENV === 'production')
 app.use(morgan(morganOption));
 app.use(helmet());
 app.use(cors());
+app.use((req,res,next)=> {
+  const authToken = req.get('Authorization');
+  if(!authToken || authToken.split(' ')[1] !== process.env.API_KEY){
+    return res.status(401).send({error: 'Unauthorized'});
+  }
+  next();
+});
 
 const validTypes = [`Bug`, `Dark`, `Dragon`, `Electric`, `Fairy`, `Fighting`, `Fire`, `Flying`, `Ghost`, `Grass`, `Ground`, `Ice`, `Normal`, `Poison`, `Psychich`, `Rock`, `Steel`, `Water`];
 
@@ -22,16 +32,19 @@ app.get('/pokemon', (req,res) => {
   let results = POKEDEX.pokemon;
   
   if (name) {
-   results = results.filter(pokemon => {
+    results = results.filter(pokemon => {
       return pokemon.name.toLowerCase().includes(name.toLowerCase())
-    })
+    });
   }
 
   if(type) {
+    results = results.filter(pokemon => {
+      let types = pokemon.type.map(type => type.toLowerCase());
+      return types.includes(type.toLowerCase());
+    });
 
   }
-  //search name || type(one of valid types)
-  //users can request types -- get /types
+  
   res.send(results)
 })
 
